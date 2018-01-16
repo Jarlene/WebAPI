@@ -8,6 +8,7 @@ import (
 func main() {
 
 	c := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
 
 	v1 := c.Group("/v1")
 

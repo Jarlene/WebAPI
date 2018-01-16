@@ -5,7 +5,8 @@ import (
 	"strconv"
 	"net/http"
 	"../base"
-	"github.com/wspl/creeper"
+	"crypto/md5"
+	"encoding/hex"
 )
 
 type LoginInfo struct {
@@ -40,7 +41,10 @@ func Login(c *gin.Context) {
 		if logintype == 0 {
 			name, _ := c.Cookie("name")
 			pass, _ := c.Cookie("pass")
-			sql := "select user_id from user where user_name='" + name + "' and pass='" + creeper.MD5(pass) + "'"
+			md5Ctx := md5.New()
+			md5Ctx.Write([]byte(pass))
+			cipherStr := md5Ctx.Sum(nil)
+			sql := "select user_id from user where user_name='" + name + "' and pass='" + hex.EncodeToString(cipherStr) + "'"
 			conf, _ := base.NewMysqlConf("root:password@/database")
 			res, _ := conf.Sql(sql)
 
@@ -123,7 +127,10 @@ func Register(c *gin.Context) {
 	sql := "select user_id from user where user_email ='" + email + "'"
 	res, err :=conf.Sql(sql)
 	if err == nil && res == nil {
-		sql = "insert into user(user_name, user_email, pass) values ('" + username + "' , '" + email + "' , '" + creeper.MD5(pass) + "')"
+		md5Ctx := md5.New()
+		md5Ctx.Write([]byte(pass))
+		cipherStr := md5Ctx.Sum(nil)
+		sql = "insert into user(user_name, user_email, pass) values ('" + username + "' , '" + email + "' , '" + hex.EncodeToString(cipherStr) + "')"
 		res, _ := conf.Insert(sql)
 		userid := strconv.FormatInt(res.(int64), 10)
 		token := base.GenToken(userid, username)
