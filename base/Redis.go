@@ -3,7 +3,7 @@ package base
 import (
 	"github.com/garyburd/redigo/redis"
 	"encoding/json"
-	"time"
+	"sync"
 )
 
 type RedisConf struct {
@@ -11,18 +11,20 @@ type RedisConf struct {
 }
 
 
+var once sync.Once
+var conf *RedisConf = nil
 
 func NewRedisClient() (*RedisConf, error) {
-	if SCache.Has("redis") {
-		return SCache.Get("redis").(*RedisConf), nil
-	}
-	c, err := redis.Dial("tcp","127.0.0.1:6379")
-	if err != nil {
-		return nil, err
-	}
-	conf := RedisConf{conn:c}
-	SCache.Add("redis", &conf, 0*time.Second)
-	return &conf, nil
+	var err error
+	once.Do(func() {
+		c, e := redis.Dial("tcp","127.0.0.1:6379")
+		err = e
+		if e == nil {
+			conf = new(RedisConf)
+			conf.conn = c
+		}
+	})
+	return conf, err
 }
 
 
@@ -69,5 +71,5 @@ func (this *RedisConf) Exist(key string) bool {
 
 func (this *RedisConf) Close()  {
 	this.conn.Close()
-	SCache.Remove("redis")
+	Default().Remove("redis")
 }

@@ -3,24 +3,28 @@ package base
 import (
 	"github.com/muesli/cache2go"
 	"time"
+	"sync"
 )
 
 type Cache struct {
 	table *cache2go.CacheTable
 }
 
-var cache  = Cache{table:cache2go.Cache("default")}
+var cache *Cache
+var cacheOnce sync.Once
 
 func Default() *Cache  {
-	return &cache
+	cacheOnce.Do(func() {
+		cache = new(Cache)
+		cache.table = cache2go.Cache("default")
+	})
+	return cache
 }
-
-
-var SCache = Default()
 
 func (this *Cache) Add(key string, val interface{}, t time.Duration) {
 	this.table.Add(key, t, val)
 }
+
 
 func (this *Cache) Remove(key string) interface{} {
 	val, err := this.table.Delete(key)

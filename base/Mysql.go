@@ -4,7 +4,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/go-xorm/xorm"
 	"strings"
-	"time"
+	"sync"
 )
 
 type MysqlConf struct {
@@ -16,16 +16,20 @@ type MysqlConf struct {
 }
 
 
+var mysqlOnce sync.Once
+var mysqlConf *MysqlConf = nil
 
 func NewMysqlConf(datasource string) (*MysqlConf, error)  {
-	if SCache.Has("mysql") {
-		return SCache.Get("mysql").(*MysqlConf), nil
-	}
-	e, _ := xorm.NewEngine("mysql", datasource)
-	var conf = new(MysqlConf)
-	conf.engine = e
-	SCache.Add("mysql", conf,  0*time.Second)
-	return conf, nil
+	var err error
+	mysqlOnce.Do(func() {
+		engine, e := xorm.NewEngine("mysql", datasource)
+		err = e
+		if e == nil {
+			mysqlConf = new(MysqlConf)
+			mysqlConf.engine = engine
+		}
+	})
+	return mysqlConf, err
 }
 
 
@@ -84,7 +88,7 @@ func (this *MysqlConf) Sql(sql string) (interface{}, error) {
 
 func (this *MysqlConf) Close()  {
 	this.engine.Close()
-	SCache.Remove("mysql")
+	Default().Remove("mysql")
 }
 
 func (this *MysqlConf) Insert(sql string) (interface{}, error) {
